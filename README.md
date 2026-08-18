@@ -1,5 +1,10 @@
 # Triton 2
 
+[![npm](https://img.shields.io/npm/v/triton2)](https://www.npmjs.com/package/triton2)
+[![CI](https://github.com/devpilgrin/triton2/actions/workflows/ci.yml/badge.svg)](https://github.com/devpilgrin/triton2/actions/workflows/ci.yml)
+[![license](https://img.shields.io/npm/l/triton2)](https://github.com/devpilgrin/triton2/blob/main/LICENSE)
+[![node](https://img.shields.io/node/v/triton2)](https://nodejs.org)
+
 Редактор диаграмм «диаграмма как код»: DSL в духе Mermaid (из
 [triton-diagram-editor](https://github.com/devpilgrin/triton-diagram-editor)) +
 детерминированный рендер и валидатор из
