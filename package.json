@@ -29,6 +29,9 @@
   "engines": {
     "node": ">=20"
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "node src/core/build.mjs",
     "smoke": "node test/smoke.mjs",

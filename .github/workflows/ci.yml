@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [20, 22, 24]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build browser bundle
+        run: npm run build
+
+      - name: Smoke test (Node + browser bundle, 5 diagram types, DSL chain)
+        run: npm run smoke
+
+      - name: Verify CLI end-to-end
+        run: |
+          printf 'flowchart TD\n  A[Client] --> B[Service]\n  B --> C{OK?}\n' > /tmp/ci.dsl
+          node bin/triton2.mjs render /tmp/ci.dsl -o /tmp/ci.html
+          test -s /tmp/ci.html
+          node bin/triton2.mjs validate examples/checkout-platform.base.architecture.json
+
+      - name: Pack dry-run
+        run: npm pack --dry-run
