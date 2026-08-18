@@ -59,26 +59,6 @@ const { svg, cards, meta } = await renderDiagram('architecture', ir);
 npm run demo    # http://127.0.0.1:8765/demo/ — живой DSL → SVG в браузере
 ```
 
-## Релиз и публикация в npm
-
-CI: каждый push/PR прогоняет сборку и smoke на Node 20/22/24
-(`.github/workflows/ci.yml`).
-
-Публикация (`.github/workflows/publish.yml`) — по тегу:
-
-```bash
-npm version patch   # или minor/major — обновит package.json и создаст тег
-git push --follow-tags
-```
-
-Workflow проверяет совпадение тега с версией в package.json, собирает бандл,
-прогоняет smoke (через `prepublishOnly`) и публикует в npm.
-
-Требуется секрет `NPM_TOKEN` в настройках репозитория
-(Settings → Secrets → Actions): npmjs.com → Access Tokens → Automation.
-Публикация идёт с provenance-аттестацией Sigstore (`--provenance`,
-репозиторий public).
-
 ## Типы диаграмм (archify IR)
 
 `architecture`, `workflow`, `sequence`, `dataflow`, `lifecycle`.
