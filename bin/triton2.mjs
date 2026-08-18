@@ -17,6 +17,7 @@ import {
   DIAGRAM_TYPES,
 } from '../src/core/index.mjs';
 import { prepareDiagramBrandMarks } from '../vendor/archify/renderers/shared/brand-marks.mjs';
+import { startEditServer } from '../src/cli/edit-server.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const TEMPLATE_PATH = path.join(root, 'vendor', 'archify', 'assets', 'template.html');
@@ -24,6 +25,7 @@ const TEMPLATE_PATH = path.join(root, 'vendor', 'archify', 'assets', 'template.h
 const USAGE = `triton2 — diagram-as-code core (Triton DSL + archify IR)
 
 Usage:
+  triton2 edit <file.dsl>                    локальный редактор (код + канвас, live)
   triton2 render <input.dsl|input.json> [-o output.html] [--title "Title"]
   triton2 validate <input.dsl|input.json>
 
@@ -70,6 +72,11 @@ async function main() {
   if (!input) {
     process.stderr.write(USAGE);
     process.exit(2);
+  }
+
+  if (command === 'edit') {
+    await startEditServer(input);
+    return; // the server keeps the process alive until Ctrl+C
   }
 
   const { type, ir } = loadInput(input, args.title);

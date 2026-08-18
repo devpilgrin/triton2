@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="ru" data-theme="dark" data-preset="classic">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Triton 2 — редактор</title>
+  <link rel="stylesheet" href="./editor.css">
+</head>
+<body>
+  <header>
+    <h1>Triton 2</h1>
+    <span class="file-name" id="file-name"></span>
+    <button id="btn-add-node" title="Добавить узел">+ Узел</button>
+    <select id="sel-direction" title="Направление лейаута">
+      <option value="TB">Сверху вниз</option>
+      <option value="LR">Слева направо</option>
+    </select>
+    <button id="btn-theme" title="Тема диаграммы">Тема</button>
+    <span class="spacer"></span>
+    <button id="btn-save" class="primary">Сохранить</button>
+    <select id="sel-export" title="Экспорт">
+      <option value="">Экспорт…</option>
+      <option value="html">HTML (viewer)</option>
+      <option value="svg">SVG</option>
+      <option value="png">PNG</option>
+    </select>
+  </header>
+  <main>
+    <textarea id="code" spellcheck="false"></textarea>
+    <div id="canvas-wrap">
+      <div id="canvas"></div>
+      <div id="props">
+        <div class="title" id="props-title">Узел</div>
+        <input id="props-label" placeholder="Подпись">
+        <div class="row">
+          <button id="props-link">Связь →</button>
+          <button id="props-unpin">Открепить</button>
+        </div>
+        <div class="row">
+          <button id="props-delete">Удалить</button>
+        </div>
+      </div>
+    </div>
+  </main>
+  <div id="status">Загрузка…</div>
+  <script type="module" src="./editor.js"></script>
+</body>
+</html>
