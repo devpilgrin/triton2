@@ -567,6 +567,31 @@ async function init() {
   style.textContent = state.templateStyle;
   document.head.appendChild(style);
 
+  // Archify ships finite motion by design (one 2.4s pass). An editor preview
+  // must show the animation continuously, so loop it while the toggle is on.
+  // The explicit toggle is the author's intent, so it also overrides the
+  // template's prefers-reduced-motion suppression. Order matters: this style
+  // block lands after the template's stylesheet.
+  const loop = document.createElement('style');
+  loop.textContent = `
+html[data-ambient-motion="running"] svg[data-animation="trace"] [data-animate="edge"],
+html[data-ambient-motion="running"] svg[data-animation="trace"] [data-animate="node"] {
+  animation-iteration-count: infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  html[data-ambient-motion="running"] svg[data-animation="trace"] [data-animate="edge"] {
+    animation: archify-edge-flow 2.4s linear infinite !important;
+    animation-delay: calc(var(--step, 0) * 160ms);
+  }
+  html[data-ambient-motion="running"] svg[data-animation="trace"] [data-animate="node"] {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: archify-node-pulse 3.6s ease-in-out infinite !important;
+    animation-delay: calc(var(--step, 0) * 160ms);
+  }
+}`;
+  document.head.appendChild(loop);
+
   await detectServer();
   els.code.value = state.text;
   els.direction.value = model().direction === 'LR' ? 'LR' : 'TB';
