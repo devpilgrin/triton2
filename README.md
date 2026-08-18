@@ -31,9 +31,21 @@ triton2 edit diagram.dsl   # локальный сервер на случайн
 ## Установка
 
 ```bash
-npm install -g triton2        # после публикации в npm
-# локально из репозитория:
-npm install && npm run build && npm link
+npm install -g triton2
+```
+
+Обновление до последней версии:
+
+```bash
+npm install -g triton2@latest
+triton2 --version   # проверить установленную версию
+```
+
+Из исходников (разработка):
+
+```bash
+git clone https://github.com/devpilgrin/triton2.git
+cd triton2 && npm install && npm run build && npm link
 ```
 
 ## CLI
@@ -61,7 +73,7 @@ const { svg, cards, meta } = await renderDiagram('architecture', ir);
 ## Демо
 
 ```bash
-npm run demo    # http://127.0.0.1:8765/demo/ — живой DSL → SVG в браузере
+triton2 demo    # редактор с демо-диаграммой в браузере — работает из глобальной установки
 ```
 
 ## Типы диаграмм (archify IR)

@@ -21,13 +21,16 @@ import { startEditServer } from '../src/cli/edit-server.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const TEMPLATE_PATH = path.join(root, 'vendor', 'archify', 'assets', 'template.html');
+const VERSION = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')).version;
 
-const USAGE = `triton2 — diagram-as-code core (Triton DSL + archify IR)
+const USAGE = `triton2 ${VERSION} — diagram-as-code core (Triton DSL + archify IR)
 
 Usage:
   triton2 edit <file.dsl>                    локальный редактор (код + канвас, live)
+  triton2 demo                               редактор с демо-диаграммой (ничего не нужно)
   triton2 render <input.dsl|input.json> [-o output.html] [--title "Title"]
   triton2 validate <input.dsl|input.json>
+  triton2 --version
 
 Diagram types: ${DIAGRAM_TYPES.join(', ')} (IR only; Triton DSL maps to architecture).
 `;
@@ -64,6 +67,16 @@ async function main() {
   const [command, ...rest] = process.argv.slice(2);
   const args = parseArgs(rest);
   const input = args._[0];
+
+  if (command === '--version' || command === '-v') {
+    process.stdout.write(`${VERSION}\n`);
+    return;
+  }
+  if (command === 'demo') {
+    const { tmpdir } = await import('node:os');
+    await startEditServer(path.join(tmpdir(), 'triton2-demo.dsl'));
+    return;
+  }
 
   if (!command || command === 'help' || command === '--help' || command === '-h') {
     process.stdout.write(USAGE);
