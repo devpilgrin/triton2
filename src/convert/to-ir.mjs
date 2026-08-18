@@ -56,7 +56,7 @@ function layerDepths(model) {
   return depth;
 }
 
-export function modelToArchitectureIR(model, { title = 'Triton 2 diagram' } = {}) {
+export function modelToArchitectureIR(model, { title = 'Triton 2 diagram', animation } = {}) {
   const depth = layerDepths(model);
   const perLayer = new Map();
   const horizontal = model.direction === 'LR' || model.direction === 'RL';
@@ -116,7 +116,7 @@ export function modelToArchitectureIR(model, { title = 'Triton 2 diagram' } = {}
   return {
     schema_version: 1,
     diagram_type: 'architecture',
-    meta: { title },
+    meta: { title, ...(animation === 'trace' ? { animation: 'trace' } : {}) },
     components,
     connections,
   };

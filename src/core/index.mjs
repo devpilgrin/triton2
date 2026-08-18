@@ -57,3 +57,6 @@ export { modelToArchitectureIR } from '../convert/to-ir.mjs';
 
 // Template helpers for browser-side standalone HTML export.
 export { applyTemplate, renderCards } from '../../vendor/archify/renderers/shared/utils.mjs';
+
+// APNG encoder for the editor's motion export (bundled into dist).
+export { default as UPNG } from 'upng-js';

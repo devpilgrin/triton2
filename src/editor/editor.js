@@ -9,6 +9,7 @@ import {
   applyTemplate,
   renderCards,
 } from '../dist/triton2-core.browser.mjs';
+import { recordMotion } from './motion.mjs';
 
 const $ = (id) => document.getElementById(id);
 const els = {
@@ -28,6 +29,7 @@ const els = {
   export: $('sel-export'),
   zoomLevel: $('zoom-level'),
   helpModal: $('help-modal'),
+  anim: $('btn-anim'),
 };
 
 const SAMPLE = `flowchart TD
@@ -45,6 +47,7 @@ const state = {
   selectedEdgeId: null,
   linkSourceId: null,
   theme: 'dark',
+  anim: localStorage.getItem('triton2-anim') === '1',
   templateText: '',
   templateStyle: '',
   lastIr: null,
@@ -117,7 +120,22 @@ function download(blob, filename) {
   a.href = URL.createObjectURL(blob);
   a.download = filename;
   a.click();
+  window.__lastExport = { name: filename, size: blob.size, type: blob.type };
   setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+}
+
+function updateAnimButton() {
+  els.anim.textContent = state.anim ? '⏸ Анимация' : '▶ Анимация';
+  els.anim.classList.toggle('primary', state.anim);
+  // The viewer's Motion Governor gates trace CSS behind these html attributes;
+  // the editor plays motion whenever the author toggled it on.
+  const html = document.documentElement;
+  if (state.anim) {
+    html.setAttribute('data-motion-capable', 'true');
+    html.setAttribute('data-ambient-motion', 'running');
+  } else {
+    html.removeAttribute('data-ambient-motion');
+  }
 }
 
 // ---------- render ----------
@@ -125,7 +143,10 @@ function download(blob, filename) {
 async function render() {
   const m = model();
   try {
-    const ir = modelToArchitectureIR(m, { title: state.server?.name || 'Triton 2' });
+    const ir = modelToArchitectureIR(m, {
+      title: state.server?.name || 'Triton 2',
+      animation: state.anim ? 'trace' : undefined,
+    });
     const { svg } = await renderDiagram('architecture', ir);
     state.lastIr = ir;
     els.canvas.innerHTML = svg;
@@ -345,7 +366,19 @@ async function exportDiagram(kind) {
   els.export.value = '';
   const base = (state.server?.name || 'diagram').replace(/\.[^.]+$/, '');
   try {
-    if (kind === 'svg') {
+    if (kind === 'webm' || kind === 'apng') {
+      const svg = els.canvas.querySelector('svg');
+      if (!svg || svg.getAttribute('data-animation') !== 'trace') {
+        setStatus('Включите анимацию (кнопка «▶ Анимация») перед экспортом движения', 'error');
+        return;
+      }
+      setStatus(`Запись ${kind.toUpperCase()}… ~6 секунд`, '');
+      const blob = await recordMotion(svg, {
+        format: kind,
+        backgroundSvgText: styledStandaloneSvg(),
+      });
+      download(blob, `${base}.${kind}`);
+    } else if (kind === 'svg') {
       download(new Blob([styledStandaloneSvg()], { type: 'image/svg+xml' }), `${base}.svg`);
     } else if (kind === 'png') {
       const svgText = styledStandaloneSvg();
@@ -505,6 +538,13 @@ $('btn-theme').addEventListener('click', () => {
   document.documentElement.setAttribute('data-theme', state.theme);
 });
 
+els.anim.addEventListener('click', () => {
+  state.anim = !state.anim;
+  localStorage.setItem('triton2-anim', state.anim ? '1' : '0');
+  updateAnimButton();
+  render();
+});
+
 $('btn-add-node').addEventListener('click', addNode);
 $('btn-save').addEventListener('click', save);
 els.export.addEventListener('change', () => exportDiagram(els.export.value));
@@ -530,6 +570,7 @@ async function init() {
   await detectServer();
   els.code.value = state.text;
   els.direction.value = model().direction === 'LR' ? 'LR' : 'TB';
+  updateAnimButton();
   render();
 }
 
