@@ -24,11 +24,18 @@
       <option value="svg">SVG</option>
       <option value="png">PNG</option>
     </select>
+    <button id="btn-help" title="Справка по синтаксису">?</button>
   </header>
   <main>
     <textarea id="code" spellcheck="false"></textarea>
     <div id="canvas-wrap">
-      <div id="canvas"></div>
+      <div id="viewport"><div id="canvas"></div></div>
+      <div id="zoom-controls">
+        <button id="zoom-out" title="Уменьшить">−</button>
+        <button id="zoom-level" title="Текущий масштаб — клик: 100%">100%</button>
+        <button id="zoom-in" title="Увеличить">+</button>
+        <button id="zoom-fit" title="Вписать в окно">Fit</button>
+      </div>
       <div id="props">
         <div class="title" id="props-title">Узел</div>
         <input id="props-label" placeholder="Подпись">
@@ -43,6 +50,36 @@
     </div>
   </main>
   <div id="status">Загрузка…</div>
+
+  <div id="help-modal" hidden>
+    <div id="help-card">
+      <h2>Синтаксис Triton DSL</h2>
+      <p class="muted">Диаграмма как код: текст слева — единственный источник истины, канвас следует за ним.</p>
+      <h3>Заголовок</h3>
+      <pre>flowchart TD   <span class="muted">%% TD/TB сверху вниз, BT снизу вверх, LR слева направо, RL справа налево</span></pre>
+      <h3>Формы узлов</h3>
+      <pre>A[Прямоугольник]   B(Скруглённый)   C([Таблетка])   D((Круг))   E{Ромб}</pre>
+      <h3>Связи</h3>
+      <pre>A --&gt; B          <span class="muted">%% стрелка вперёд</span>
+A &lt;-- B          <span class="muted">%% стрелка назад</span>
+A &lt;--&gt; B         <span class="muted">%% в обе стороны</span>
+A -Текст-&gt; B     <span class="muted">%% подпись на стрелке</span>
+A --&gt;|Текст| B   <span class="muted">%% то же через пайп</span>
+A --&gt; B --&gt; C    <span class="muted">%% цепочка</span></pre>
+      <h3>Стили</h3>
+      <pre>A --&gt; B [--]        <span class="muted">%% прерывистая</span>
+A --&gt; B [-.-]       <span class="muted">%% штрих-пунктир</span>
+A --&gt; B [red]       <span class="muted">%% цвет связи (red / красный / #ff0000)</span>
+A[Узел] [red]       <span class="muted">%% цвет узла (только в отдельной строке)</span>
+A[Узел] [pin=120,340]  <span class="muted">%% закрепить позицию (ставится и drag'ом)</span></pre>
+      <h3>Прочее</h3>
+      <pre>%% комментарий</pre>
+      <div class="row">
+        <button id="help-example" class="primary">Вставить пример</button>
+        <button id="help-close">Закрыть</button>
+      </div>
+    </div>
+  </div>
   <script type="module" src="./editor.js"></script>
 </body>
 </html>

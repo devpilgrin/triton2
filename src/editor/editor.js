@@ -14,6 +14,7 @@ const $ = (id) => document.getElementById(id);
 const els = {
   code: $('code'),
   canvas: $('canvas'),
+  viewport: $('viewport'),
   wrap: $('canvas-wrap'),
   status: $('status'),
   fileName: $('file-name'),
@@ -25,6 +26,8 @@ const els = {
   propsDelete: $('props-delete'),
   direction: $('sel-direction'),
   export: $('sel-export'),
+  zoomLevel: $('zoom-level'),
+  helpModal: $('help-modal'),
 };
 
 const SAMPLE = `flowchart TD
@@ -46,6 +49,48 @@ const state = {
   templateStyle: '',
   lastIr: null,
 };
+
+// Canvas viewport: pan (x/y, px) + zoom (scale). Until the user zooms or pans
+// manually, every render auto-fits the diagram into the visible area.
+const view = { scale: 1, x: 0, y: 0, userZoomed: false };
+let justPanned = false;
+
+function applyView() {
+  els.viewport.style.transform = `translate(${view.x}px, ${view.y}px) scale(${view.scale})`;
+  els.zoomLevel.textContent = `${Math.round(view.scale * 100)}%`;
+}
+
+function fitView() {
+  const svg = els.canvas.querySelector('svg');
+  if (!svg) return;
+  const vb = svg.viewBox.baseVal;
+  const rect = els.wrap.getBoundingClientRect();
+  const pad = 48; // viewport padding, both sides
+  const scale = Math.min((rect.width - pad) / vb.width, (rect.height - pad) / vb.height);
+  view.scale = Math.min(2.5, Math.max(0.05, scale));
+  view.x = (rect.width - vb.width * view.scale) / 2;
+  view.y = (rect.height - vb.height * view.scale) / 2;
+  view.userZoomed = false;
+  applyView();
+}
+
+function zoomAt(clientX, clientY, factor, user = true) {
+  const rect = els.wrap.getBoundingClientRect();
+  const px = clientX - rect.left;
+  const py = clientY - rect.top;
+  const next = Math.min(6, Math.max(0.1, view.scale * factor));
+  const k = next / view.scale;
+  view.x = px - (px - view.x) * k;
+  view.y = py - (py - view.y) * k;
+  view.scale = next;
+  if (user) view.userZoomed = true;
+  applyView();
+}
+
+function wrapCenter() {
+  const rect = els.wrap.getBoundingClientRect();
+  return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+}
 
 // ---------- helpers ----------
 
@@ -86,6 +131,8 @@ async function render() {
     els.canvas.innerHTML = svg;
     wireCanvas();
     applySelection();
+    if (view.userZoomed) applyView();
+    else fitView();
     setStatus(`OK — ${m.nodes.length} узлов, ${m.edges.length} рёбер`, 'ok');
   } catch (error) {
     const diagnostics = Array.isArray(error?.archifyDiagnostics)
@@ -135,6 +182,7 @@ function wireCanvas() {
   if (!svg) return;
 
   svg.addEventListener('click', (event) => {
+    if (justPanned) { justPanned = false; return; }
     if (event.target === svg) {
       state.selectedNodeId = null;
       state.selectedEdgeId = null;
@@ -375,7 +423,81 @@ els.code.addEventListener('input', () => {
 
 els.direction.addEventListener('change', () => {
   const m = model();
+  view.userZoomed = false; // layout shape changed radically — refit
   commitModel({ ...m, direction: els.direction.value });
+});
+
+// Pan: drag on empty canvas (not on nodes, props, or zoom controls).
+els.wrap.addEventListener('pointerdown', (event) => {
+  if (event.target.closest('g[data-node-id]') || event.target.closest('#props')
+      || event.target.closest('#zoom-controls')) return;
+  const startX = event.clientX;
+  const startY = event.clientY;
+  const baseX = view.x;
+  const baseY = view.y;
+  let moved = false;
+  const onMove = (moveEvent) => {
+    const dx = moveEvent.clientX - startX;
+    const dy = moveEvent.clientY - startY;
+    if (!moved && Math.hypot(dx, dy) < 3) return;
+    moved = true;
+    justPanned = true;
+    els.wrap.classList.add('panning');
+    view.x = baseX + dx;
+    view.y = baseY + dy;
+    view.userZoomed = true;
+    applyView();
+  };
+  const onUp = () => {
+    window.removeEventListener('pointermove', onMove);
+    window.removeEventListener('pointerup', onUp);
+    els.wrap.classList.remove('panning');
+    if (!moved) justPanned = false;
+  };
+  window.addEventListener('pointermove', onMove);
+  window.addEventListener('pointerup', onUp);
+});
+
+// Wheel zoom at cursor.
+els.wrap.addEventListener('wheel', (event) => {
+  event.preventDefault();
+  zoomAt(event.clientX, event.clientY, event.deltaY < 0 ? 1.12 : 1 / 1.12);
+}, { passive: false });
+
+// Zoom control buttons.
+$('zoom-in').addEventListener('click', () => {
+  const c = wrapCenter();
+  zoomAt(c.x, c.y, 1.25);
+});
+$('zoom-out').addEventListener('click', () => {
+  const c = wrapCenter();
+  zoomAt(c.x, c.y, 0.8);
+});
+els.zoomLevel.addEventListener('click', () => {
+  const svg = els.canvas.querySelector('svg');
+  const rect = els.wrap.getBoundingClientRect();
+  if (!svg) return;
+  const vb = svg.viewBox.baseVal;
+  view.scale = 1;
+  view.x = (rect.width - vb.width) / 2;
+  view.y = (rect.height - vb.height) / 2;
+  view.userZoomed = true;
+  applyView();
+});
+$('zoom-fit').addEventListener('click', fitView);
+
+// Help modal.
+$('btn-help').addEventListener('click', () => { els.helpModal.hidden = false; });
+$('help-close').addEventListener('click', () => { els.helpModal.hidden = true; });
+els.helpModal.addEventListener('click', (event) => {
+  if (event.target === els.helpModal) els.helpModal.hidden = true;
+});
+$('help-example').addEventListener('click', () => {
+  state.text = SAMPLE;
+  els.code.value = SAMPLE;
+  els.helpModal.hidden = true;
+  view.userZoomed = false;
+  render();
 });
 
 $('btn-theme').addEventListener('click', () => {
