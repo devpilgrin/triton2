@@ -75,6 +75,15 @@ A --&gt; B [-.-]       <span class="muted">%% штрих-пунктир</span>
 A --&gt; B [red]       <span class="muted">%% цвет связи (red / красный / #ff0000)</span>
 A[Узел] [red]       <span class="muted">%% цвет узла (только в отдельной строке)</span>
 A[Узел] [pin=120,340]  <span class="muted">%% закрепить позицию (ставится и drag'ом)</span></pre>
+      <h3>ArchiMate</h3>
+      <pre>archimate TD   <span class="muted">%% заголовок включает нотацию ArchiMate</span>
+client[Клиент] [arch:business.actor]
+svc[CRM] [arch:application.component]
+node[Сервер] [arch:technology.node]</pre>
+      <p class="muted">Слои: business, application, technology, physical, strategy, motivation.<br>
+      Элементы: actor, role, process, function, service, object, component, interface,
+      dataobject, node, device, artifact, event, goal, requirement, stakeholder…<br>
+      Узлы группируются в полосы слоёв с канонической палитрой ArchiMate.</p>
       <h3>Прочее</h3>
       <pre>%% комментарий</pre>
       <div class="row">

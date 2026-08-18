@@ -2,12 +2,15 @@
 import { matchNodeRef } from './shapes.mjs';
 import { resolveColorName, resolveLineStyleWord } from './keywords.mjs';
 
-const HEADER_RE = /^\s*(flowchart|graph)\s+(TB|TD|BT|LR|RL)\s*;?\s*$/i;
+const HEADER_RE = /^\s*(flowchart|graph|archimate)\s+(TB|TD|BT|LR|RL)\s*;?\s*$/i;
 
 function normalizeDirection(raw) {
   const upper = raw.toUpperCase();
   return upper === 'TD' ? 'TB' : upper;
 }
+
+// ArchiMate element annotation: [arch:layer.element] or [arch:layer].
+const ARCHIMATE_RE = /^arch:([a-z]+)(?:\.([a-z]+))?$/i;
 
 // Unified arrow: optional "<" (arrowhead at source), a dash, an inline label
 // made of anything but dashes, another dash, optional ">" (arrowhead at
@@ -85,41 +88,50 @@ function matchNodeDeclBrackets(text) {
   let rest = text;
   let color;
   let pin;
+  let archimate;
 
   for (;;) {
     const m = /^\s*\[([^\]]*)\]/.exec(rest);
     if (!m) break;
     const content = m[1].trim();
+    const archMatch = ARCHIMATE_RE.exec(content);
     const pinMatch = /^pin\s*=\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)$/i.exec(content);
-    if (pinMatch) {
+    if (archMatch) {
+      archimate = {
+        layer: archMatch[1].toLowerCase(),
+        element: (archMatch[2] || 'element').toLowerCase(),
+      };
+    } else if (pinMatch) {
       pin = { x: Number(pinMatch[1]), y: Number(pinMatch[2]) };
     } else if (content) {
       color = resolveColorName(content);
     }
     rest = rest.slice(m[0].length);
   }
-  return { color, pin, rest };
+  return { color, pin, archimate, rest };
 }
 
 export function parseFlowchart(source) {
   const lines = source.split('\n');
   let direction = 'TB';
+  let notation = 'flowchart';
   const nodeOrder = [];
   const nodes = new Map();
   const edges = [];
   let edgeCounter = 0;
 
-  const upsertNode = (id, shape, label, color, pin) => {
+  const upsertNode = (id, shape, label, color, pin, archimate) => {
     const existing = nodes.get(id);
     if (existing) {
       if (shape) existing.shape = shape;
       if (label !== undefined) existing.label = label;
       if (color !== undefined) existing.color = color;
       if (pin !== undefined) existing.pin = pin;
+      if (archimate !== undefined) existing.archimate = archimate;
       return;
     }
     nodeOrder.push(id);
-    nodes.set(id, { id, shape: shape ?? 'rect', label: label ?? id, color, pin });
+    nodes.set(id, { id, shape: shape ?? 'rect', label: label ?? id, color, pin, archimate });
   };
 
   for (const rawLine of lines) {
@@ -129,6 +141,7 @@ export function parseFlowchart(source) {
     if (HEADER_RE.test(line)) {
       const m = HEADER_RE.exec(line);
       direction = normalizeDirection(m[2]);
+      notation = m[1].toLowerCase() === 'archimate' ? 'archimate' : 'flowchart';
       continue;
     }
 
@@ -172,6 +185,7 @@ export function parseFlowchart(source) {
         current.label,
         isFirstHop ? leadingDecl.color : undefined,
         isFirstHop ? leadingDecl.pin : undefined,
+        isFirstHop ? leadingDecl.archimate : undefined,
       );
       upsertNode(next.id, next.shape, next.label);
       edges.push({
@@ -190,12 +204,13 @@ export function parseFlowchart(source) {
 
     if (!matchedAnyEdge && current.rest.trim() === '') {
       // standalone node declaration, e.g. `A[Start] [red] [pin=120,340]`
-      upsertNode(current.id, current.shape, current.label, leadingDecl.color, leadingDecl.pin);
+      upsertNode(current.id, current.shape, current.label, leadingDecl.color, leadingDecl.pin, leadingDecl.archimate);
     }
   }
 
   return {
     direction,
+    notation,
     nodes: nodeOrder.map((id) => nodes.get(id)),
     edges,
   };

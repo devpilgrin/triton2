@@ -14,9 +14,14 @@ import {
   validateDiagram,
   parseFlowchart,
   modelToArchitectureIR,
+  modelToArchimateIR,
+  isArchimateModel,
+  applyTemplate,
+  renderCards,
   DIAGRAM_TYPES,
 } from '../src/core/index.mjs';
 import { prepareDiagramBrandMarks } from '../vendor/archify/renderers/shared/brand-marks.mjs';
+import { ARCHIMATE_CSS } from '../src/editor/archimate-preset.mjs';
 import { startEditServer } from '../src/cli/edit-server.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -57,9 +62,13 @@ function loadInput(file, title) {
     return { type: ir.diagram_type, ir };
   }
   const model = parseFlowchart(source);
+  const archimate = isArchimateModel(model);
   return {
     type: 'architecture',
-    ir: modelToArchitectureIR(model, { title: title || path.basename(file).replace(/\.(dsl|mmd)$/i, '') }),
+    archimate,
+    ir: archimate
+      ? modelToArchimateIR(model, { title: title || path.basename(file).replace(/\.(dsl|mmd)$/i, '') })
+      : modelToArchitectureIR(model, { title: title || path.basename(file).replace(/\.(dsl|mmd)$/i, '') }),
   };
 }
 
@@ -92,7 +101,7 @@ async function main() {
     return; // the server keeps the process alive until Ctrl+C
   }
 
-  const { type, ir } = loadInput(input, args.title);
+  const { type, ir, archimate } = loadInput(input, args.title);
 
   if (command === 'validate') {
     const result = await validateDiagram(type, ir);
@@ -107,11 +116,27 @@ async function main() {
   }
 
   if (command === 'render') {
-    const output = args.output || input.replace(/\.(dsl|mmd|json)$/i, '') + '.html';
+    const output = path.resolve(args.output || input.replace(/\.(dsl|mmd|json)$/i, '') + '.html');
     await prepareDiagramBrandMarks(type, ir);
-    const template = fs.readFileSync(TEMPLATE_PATH, 'utf8');
-    await renderDiagram(type, ir, { template, outPath: path.resolve(output) });
-    // writeDiagram (inside the renderer) prints the absolute output path.
+    let template = fs.readFileSync(TEMPLATE_PATH, 'utf8');
+    const { svg, cards, meta } = await renderDiagram(type, ir);
+    let finalSvg = svg;
+    if (archimate) {
+      finalSvg = svg.replace('data-preset="classic"', 'data-preset="archimate"');
+      template = template.replace('</style>', `${ARCHIMATE_CSS}\n</style>`);
+    }
+    const html = applyTemplate(template, {
+      title: meta.title,
+      subtitle: meta.subtitle,
+      svg: finalSvg,
+      cards: renderCards(cards || []),
+      visualPreset: archimate ? 'archimate' : (meta.visual_preset || 'classic'),
+      guidedViews: meta.views || [],
+      sourceEvidence: null,
+    });
+    fs.mkdirSync(path.dirname(output), { recursive: true });
+    fs.writeFileSync(output, html);
+    process.stdout.write(`${output}\n`);
     return;
   }
 

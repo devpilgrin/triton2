@@ -83,5 +83,35 @@ try {
   check('diagnostics for broken IR', diag > 0 || /ghost-node/.test(error.message), error.message.split('\n')[0].slice(0, 90));
 }
 
+// 5. ArchiMate chain: archimate DSL -> layer bands + palette preset -> SVG.
+const ARCH_DSL = `archimate TD
+  customer[Клиент] [arch:business.actor]
+  ordering[Оформление заказа] [arch:business.process]
+  crm[CRM] [arch:application.component]
+  api[Order API] [arch:application.service]
+  store[(Заказы)] [arch:technology.node]
+  customer --> ordering
+  ordering --> crm
+  crm --> api
+  api --> store`;
+try {
+  const m = parseFlowchart(ARCH_DSL);
+  const { modelToArchimateIR, isArchimateModel } = await import('../src/convert/archimate.mjs');
+  const ir = modelToArchimateIR(m, { title: 'ArchiMate smoke' });
+  const { svg } = await renderDiagram('architecture', ir);
+  const presetSvg = svg.replace('data-preset="classic"', 'data-preset="archimate"');
+  check(
+    'archimate dsl -> ir -> svg',
+    isArchimateModel(m)
+      && presetSvg.includes('data-preset="archimate"')
+      && svg.includes('Актор')
+      && svg.includes('Бизнес')
+      && svg.includes('Технологии'),
+    `${ir.components.length} components, ${ir.boundaries.length} layer boundaries`,
+  );
+} catch (error) {
+  check('archimate dsl -> ir -> svg', false, error.message.split('\n')[0]);
+}
+
 console.log(failures === 0 ? '\nALL CHECKS PASSED' : `\n${failures} CHECK(S) FAILED`);
 process.exit(failures === 0 ? 0 : 1);

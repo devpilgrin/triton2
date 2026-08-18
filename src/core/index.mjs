@@ -54,6 +54,7 @@ export async function validateDiagram(diagramType, diagram) {
 export { parseFlowchart } from '../convert/parse.mjs';
 export { serializeFlowchart } from '../convert/serialize.mjs';
 export { modelToArchitectureIR } from '../convert/to-ir.mjs';
+export { modelToArchimateIR, isArchimateModel } from '../convert/archimate.mjs';
 
 // Template helpers for browser-side standalone HTML export.
 export { applyTemplate, renderCards } from '../../vendor/archify/renderers/shared/utils.mjs';

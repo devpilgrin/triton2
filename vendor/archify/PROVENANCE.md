@@ -17,6 +17,9 @@ parts Triton 2 needs for deterministic SVG/HTML rendering and validation.
    byte-identical to upstream.
 2. `renderers/shared/cli.mjs` — one added line: `export { validateSchema }`
    re-export so patched renderers can import it from this module.
+3. `assets/template.html` — `'archimate'` added to the viewer's `PRESETS`
+   array so the authored ArchiMate preset survives the Style Picker
+   normalization (reader sessions can still switch away and back).
 
 Browser compatibility is achieved without touching these files further:
 `src/core/build.mjs` aliases the four Node-only shared modules

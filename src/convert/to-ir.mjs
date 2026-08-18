@@ -13,7 +13,7 @@ const GAP_ROW = 130;
 const MARGIN_X = 40;
 const MARGIN_Y = 90;
 
-function layerDepths(model) {
+export function layerDepths(model) {
   // Layered placement tolerant to feedback edges (e.g. "D --> B" retry loops).
   // A plain longest-path pass inflates depths around cycles; instead, place a
   // node only once all its already-placed predecessors are known, and force
@@ -56,6 +56,37 @@ function layerDepths(model) {
   return depth;
 }
 
+// Edges -> archify connections, with label anchors placed beside the route
+// (archify validates label geometry strictly). Shared by the flowchart and
+// ArchiMate converters.
+export function buildConnections(edges, components) {
+  const byId = new Map(components.map((c) => [c.id, c]));
+  const center = (c) => [c.pos[0] + c.size[0] / 2, c.pos[1] + c.size[1] / 2];
+
+  return edges.map((edge) => {
+    const conn = {
+      id: edge.id,
+      from: edge.source,
+      to: edge.target,
+      ...(edge.lineStyle === 'dashed' || edge.lineStyle === 'dashdot' ? { variant: 'dashed' } : {}),
+    };
+    if (!edge.label) return conn;
+    const from = byId.get(edge.source);
+    const to = byId.get(edge.target);
+    if (!from || !to) return { ...conn, label: edge.label };
+    const [fx, fy] = center(from);
+    const [tx, ty] = center(to);
+    const dx = tx - fx;
+    const dy = ty - fy;
+    const len = Math.hypot(dx, dy) || 1;
+    const labelAt = [
+      Math.round((fx + tx) / 2 + (-dy / len) * 26),
+      Math.round((fy + ty) / 2 + (dx / len) * 26),
+    ];
+    return { ...conn, label: edge.label, labelAt };
+  });
+}
+
 export function modelToArchitectureIR(model, { title = 'Triton 2 diagram', animation } = {}) {
   const depth = layerDepths(model);
   const perLayer = new Map();
@@ -83,35 +114,10 @@ export function modelToArchitectureIR(model, { title = 'Triton 2 diagram', anima
     };
   });
 
-  const byId = new Map(components.map((c) => [c.id, c]));
-  const center = (c) => [c.pos[0] + c.size[0] / 2, c.pos[1] + c.size[1] / 2];
-
   // Archify validates label geometry strictly; an unlabeled default label
   // position can land on the source node when the auto layout packs nodes
-  // tightly. Give every labeled edge an explicit anchor: the segment midpoint
-  // offset perpendicular to travel, so the label rides beside the route.
-  const connections = model.edges.map((edge) => {
-    const conn = {
-      id: edge.id,
-      from: edge.source,
-      to: edge.target,
-      ...(edge.lineStyle === 'dashed' || edge.lineStyle === 'dashdot' ? { variant: 'dashed' } : {}),
-    };
-    if (!edge.label) return conn;
-    const from = byId.get(edge.source);
-    const to = byId.get(edge.target);
-    if (!from || !to) return { ...conn, label: edge.label };
-    const [fx, fy] = center(from);
-    const [tx, ty] = center(to);
-    const dx = tx - fx;
-    const dy = ty - fy;
-    const len = Math.hypot(dx, dy) || 1;
-    const labelAt = [
-      Math.round((fx + tx) / 2 + (-dy / len) * 26),
-      Math.round((fy + ty) / 2 + (dx / len) * 26),
-    ];
-    return { ...conn, label: edge.label, labelAt };
-  });
+  // tightly. buildConnections gives every labeled edge an explicit anchor.
+  const connections = buildConnections(model.edges, components);
 
   return {
     schema_version: 1,

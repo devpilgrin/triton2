@@ -76,6 +76,27 @@ const { svg, cards, meta } = await renderDiagram('architecture', ir);
 triton2 demo    # редактор с демо-диаграммой в браузере — работает из глобальной установки
 ```
 
+## ArchiMate
+
+Нотация включается заголовком `archimate` (вместо `flowchart`); узел получает
+слой и тип элемента аннотацией `[arch:слой.элемент]`:
+
+```
+archimate TD
+  customer[Клиент] [arch:business.actor]
+  ordering[Оформление заказа] [arch:business.process]
+  crm[CRM] [arch:application.component]
+  store[(Заказы)] [arch:technology.node]
+  customer --> ordering
+  ordering --> crm
+  crm --> store [--]
+```
+
+Слои `business` / `application` / `technology` / `physical` / `strategy` /
+`motivation` раскладываются полосами в каноническом порядке и окрашиваются в
+палитру ArchiMate (пресет `archimate` доступен и в Style Picker экспортированного
+HTML). Тип элемента уходит в подпись узла (Актор, Процесс, Сервис…).
+
 ## Типы диаграмм (archify IR)
 
 `architecture`, `workflow`, `sequence`, `dataflow`, `lifecycle`.

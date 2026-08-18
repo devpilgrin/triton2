@@ -5,6 +5,7 @@ function nodeBrackets(node) {
   const parts = [];
   if (node.color) parts.push(`[${node.color}]`);
   if (node.pin) parts.push(`[pin=${Math.round(node.pin.x)},${Math.round(node.pin.y)}]`);
+  if (node.archimate) parts.push(`[arch:${node.archimate.layer}.${node.archimate.element}]`);
   return parts.length ? ` ${parts.join(' ')}` : '';
 }
 
@@ -24,7 +25,7 @@ function edgeBrackets(edge) {
 }
 
 export function serializeFlowchart(model) {
-  const lines = [`flowchart ${model.direction}`];
+  const lines = [`${model.notation === 'archimate' ? 'archimate' : 'flowchart'} ${model.direction}`];
 
   for (const node of model.nodes) {
     lines.push(`  ${node.id}${wrapLabel(node.label, node.shape)}${nodeBrackets(node)}`);

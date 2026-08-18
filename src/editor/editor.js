@@ -5,11 +5,14 @@ import {
   parseFlowchart,
   serializeFlowchart,
   modelToArchitectureIR,
+  modelToArchimateIR,
+  isArchimateModel,
   renderDiagram,
   applyTemplate,
   renderCards,
 } from '../dist/triton2-core.browser.mjs';
 import { recordMotion } from './motion.mjs';
+import { ARCHIMATE_CSS } from './archimate-preset.mjs';
 
 const $ = (id) => document.getElementById(id);
 const els = {
@@ -142,12 +145,19 @@ function updateAnimButton() {
 
 async function render() {
   const m = model();
+  state.archimate = isArchimateModel(m);
   try {
-    const ir = modelToArchitectureIR(m, {
+    const opts = {
       title: state.server?.name || 'Triton 2',
       animation: state.anim ? 'trace' : undefined,
-    });
-    const { svg } = await renderDiagram('architecture', ir);
+    };
+    const ir = state.archimate ? modelToArchimateIR(m, opts) : modelToArchitectureIR(m, opts);
+    let { svg } = await renderDiagram('architecture', ir);
+    if (state.archimate) {
+      // The vendored schema pins visual_preset to four built-ins; the
+      // archimate preset rides on the svg attribute instead.
+      svg = svg.replace('data-preset="classic"', 'data-preset="archimate"');
+    }
     state.lastIr = ir;
     els.canvas.innerHTML = svg;
     wireCanvas();
@@ -348,7 +358,7 @@ function styledStandaloneSvg() {
   clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
   clone.setAttribute('data-theme', state.theme);
   const style = document.createElementNS('http://www.w3.org/2000/svg', 'style');
-  style.textContent = state.templateStyle;
+  style.textContent = state.templateStyle + (state.archimate ? ARCHIMATE_CSS : '');
   clone.insertBefore(style, clone.firstChild);
   // Solid backdrop: the template page background does not exist in standalone SVG.
   const bg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
@@ -403,12 +413,18 @@ async function exportDiagram(kind) {
     } else if (kind === 'html') {
       const ir = state.lastIr;
       const { svg, cards } = await renderDiagram('architecture', ir);
-      const html = applyTemplate(state.templateText, {
+      const finalSvg = state.archimate
+        ? svg.replace('data-preset="classic"', 'data-preset="archimate"')
+        : svg;
+      const template = state.archimate
+        ? state.templateText.replace('</style>', `${ARCHIMATE_CSS}\n</style>`)
+        : state.templateText;
+      const html = applyTemplate(template, {
         title: ir.meta.title,
         subtitle: undefined,
-        svg,
+        svg: finalSvg,
         cards: renderCards(cards || []),
-        visualPreset: 'classic',
+        visualPreset: state.archimate ? 'archimate' : 'classic',
         guidedViews: [],
         sourceEvidence: null,
       });
@@ -591,6 +607,11 @@ html[data-ambient-motion="running"] svg[data-animation="trace"] [data-animate="n
   }
 }`;
   document.head.appendChild(loop);
+
+  // ArchiMate preset: dormant until a diagram carries data-preset="archimate".
+  const archimateStyle = document.createElement('style');
+  archimateStyle.textContent = ARCHIMATE_CSS;
+  document.head.appendChild(archimateStyle);
 
   await detectServer();
   els.code.value = state.text;
