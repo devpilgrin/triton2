@@ -61,8 +61,8 @@ Workflow проверяет совпадение тега с версией в p
 
 Требуется секрет `NPM_TOKEN` в настройках репозитория
 (Settings → Secrets → Actions): npmjs.com → Access Tokens → Automation.
-Provenance-аттестация (`npm publish --provenance`) станет доступна после
-перевода репозитория в public.
+Публикация идёт с provenance-аттестацией Sigstore (`--provenance`,
+репозиторий public).
 
 ## Типы диаграмм (archify IR)
 

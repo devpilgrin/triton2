@@ -8,6 +8,9 @@ on:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # Sigstore provenance attestation
     steps:
       - uses: actions/checkout@v4
 
@@ -30,6 +33,6 @@ jobs:
 
       # prepublishOnly runs build + smoke automatically
       - name: Publish
-        run: npm publish --access public
+        run: npm publish --access public --provenance
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
