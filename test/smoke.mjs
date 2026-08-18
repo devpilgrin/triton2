@@ -96,7 +96,7 @@ const ARCH_DSL = `archimate TD
   api --> store`;
 try {
   const m = parseFlowchart(ARCH_DSL);
-  const { modelToArchimateIR, isArchimateModel } = await import('../src/convert/archimate.mjs');
+  const { modelToArchimateIR, isArchimateModel, archimateIconImages } = await import('../src/convert/archimate.mjs');
   const ir = modelToArchimateIR(m, { title: 'ArchiMate smoke' });
   const { svg } = await renderDiagram('architecture', ir);
   const presetSvg = svg.replace('data-preset="classic"', 'data-preset="archimate"');
@@ -109,8 +109,36 @@ try {
       && svg.includes('Технологии'),
     `${ir.components.length} components, ${ir.boundaries.length} layer boundaries`,
   );
+  const icons = archimateIconImages(m, ir.components);
+  check(
+    'archimate icons injected',
+    icons.includes('data:image/png;base64,') && icons.includes('data-icon-for="customer"'),
+    `${(icons.match(/<image/g) || []).length} icon images`,
+  );
 } catch (error) {
   check('archimate dsl -> ir -> svg', false, error.message.split('\n')[0]);
+}
+
+// 6. DSL styling -> embedded CSS overrides (node color/shape, edge color).
+try {
+  const { styleOverridesForModel } = await import('../src/convert/to-ir.mjs');
+  const styled = parseFlowchart('flowchart TD\n  A[Узел] [red]\n  A --> B [blue]');
+  const css = styleOverridesForModel(styled);
+  check(
+    'style overrides from DSL',
+    css.includes('fill: red') && css.includes('stroke: blue'),
+    `${css.split('\n').length} rules`,
+  );
+  // round-trip: model -> DSL -> model keeps every parameter
+  const { serializeFlowchart } = await import('../src/convert/serialize.mjs');
+  const rt = parseFlowchart(serializeFlowchart(styled));
+  check(
+    'dsl round-trip keeps params',
+    rt.nodes[0].color === 'red' && rt.edges[0].color === 'blue',
+    '',
+  );
+} catch (error) {
+  check('style overrides from DSL', false, error.message.split('\n')[0]);
 }
 
 console.log(failures === 0 ? '\nALL CHECKS PASSED' : `\n${failures} CHECK(S) FAILED`);

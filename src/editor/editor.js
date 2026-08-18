@@ -7,6 +7,10 @@ import {
   modelToArchitectureIR,
   modelToArchimateIR,
   isArchimateModel,
+  archimateIconImages,
+  LAYER_ELEMENTS,
+  ARCHIMATE_LAYERS,
+  styleOverridesForModel,
   renderDiagram,
   applyTemplate,
   renderCards,
@@ -28,6 +32,18 @@ const els = {
   propsLink: $('props-link'),
   propsUnpin: $('props-unpin'),
   propsDelete: $('props-delete'),
+  propsShape: $('props-shape'),
+  propsColor: $('props-color'),
+  propsArchimate: $('props-archimate'),
+  propsLayer: $('props-layer'),
+  propsElement: $('props-element'),
+  propsEdgeFields: $('props-edge-fields'),
+  propsNodeFields: $('props-node-fields'),
+  propsEdgeColor: $('props-edge-color'),
+  propsLinestyle: $('props-linestyle'),
+  propsEdgedir: $('props-edgedir'),
+  propsPinRow: $('props-pin-row'),
+  propsPinText: $('props-pin-text'),
   direction: $('sel-direction'),
   export: $('sel-export'),
   zoomLevel: $('zoom-level'),
@@ -157,7 +173,13 @@ async function render() {
       // The vendored schema pins visual_preset to four built-ins; the
       // archimate preset rides on the svg attribute instead.
       svg = svg.replace('data-preset="classic"', 'data-preset="archimate"');
+      // ArchiMate element icon in the node's top-right corner.
+      svg = svg.replace('</svg>', `${archimateIconImages(m, ir.components)}\n</svg>`);
     }
+    // DSL-level styling (node color/shape, edge color) has no IR equivalent —
+    // it lands as a CSS override block inside the SVG.
+    const overrides = styleOverridesForModel(m);
+    if (overrides) svg = svg.replace('</svg>', `<style>${overrides}</style>\n</svg>`);
     state.lastIr = ir;
     els.canvas.innerHTML = svg;
     wireCanvas();
@@ -182,18 +204,41 @@ function applySelection() {
   const hasNode = Boolean(state.selectedNodeId);
   const hasEdge = Boolean(state.selectedEdgeId);
   els.props.classList.toggle('visible', hasNode || hasEdge);
+
+  els.propsNodeFields.hidden = !hasNode;
+  els.propsArchimate.hidden = !(hasNode && state.archimate);
+  els.propsPinRow.hidden = !hasNode;
+  els.propsLink.style.display = hasNode ? '' : 'none';
+  els.propsEdgeFields.hidden = !hasEdge;
+
   if (hasNode) {
     const node = model().nodes.find((n) => n.id === state.selectedNodeId);
     els.propsTitle.textContent = `Узел: ${state.selectedNodeId}`;
     els.propsLabel.value = node?.label ?? '';
-    els.propsLink.style.display = '';
-    els.propsUnpin.style.display = '';
+    els.propsShape.value = node?.shape || 'rect';
+    els.propsColor.value = node?.color || '';
+    els.propsPinText.textContent = node?.pin
+      ? `pin: ${Math.round(node.pin.x)}, ${Math.round(node.pin.y)}`
+      : 'не закреплён';
+    if (state.archimate) {
+      els.propsLayer.innerHTML = Object.entries(ARCHIMATE_LAYERS)
+        .sort((a, b) => a[1].order - b[1].order)
+        .map(([key, l]) => `<option value="${key}">${l.label}</option>`)
+        .join('');
+      const layer = node?.archimate?.layer || 'application';
+      els.propsLayer.value = layer;
+      els.propsElement.innerHTML = Object.entries(LAYER_ELEMENTS[layer] || {})
+        .map(([key, ru]) => `<option value="${key}">${ru}</option>`)
+        .join('');
+      els.propsElement.value = node?.archimate?.element || 'element';
+    }
   } else if (hasEdge) {
     const edge = model().edges.find((e) => e.id === state.selectedEdgeId);
     els.propsTitle.textContent = `Связь: ${edge?.source} → ${edge?.target}`;
     els.propsLabel.value = edge?.label ?? '';
-    els.propsLink.style.display = 'none';
-    els.propsUnpin.style.display = 'none';
+    els.propsEdgeColor.value = edge?.color || '';
+    els.propsLinestyle.value = edge?.lineStyle || 'solid';
+    els.propsEdgedir.value = edge?.direction || 'forward';
   }
 }
 
@@ -320,6 +365,26 @@ function renameSelected(label) {
         e.id === state.selectedEdgeId ? { ...e, label: label.trim() || undefined } : e),
     });
   }
+}
+
+function updateSelectedNode(patch) {
+  if (!state.selectedNodeId) return;
+  const id = state.selectedNodeId;
+  const m = model();
+  commitModel({
+    ...m,
+    nodes: m.nodes.map((n) => (n.id === id ? { ...n, ...patch } : n)),
+  });
+}
+
+function updateSelectedEdge(patch) {
+  if (!state.selectedEdgeId) return;
+  const id = state.selectedEdgeId;
+  const m = model();
+  commitModel({
+    ...m,
+    edges: m.edges.map((e) => (e.id === id ? { ...e, ...patch } : e)),
+  });
 }
 
 function deleteSelected() {
@@ -568,6 +633,25 @@ els.export.addEventListener('change', () => exportDiagram(els.export.value));
 els.propsLabel.addEventListener('change', () => renameSelected(els.propsLabel.value));
 els.propsDelete.addEventListener('click', deleteSelected);
 els.propsUnpin.addEventListener('click', unpinSelected);
+
+// Node parameters
+els.propsShape.addEventListener('change', () => updateSelectedNode({ shape: els.propsShape.value }));
+els.propsColor.addEventListener('change', () => updateSelectedNode({ color: els.propsColor.value || undefined }));
+els.propsLayer.addEventListener('change', () => {
+  const layer = els.propsLayer.value;
+  const element = Object.keys(LAYER_ELEMENTS[layer] || { element: 1 })[0];
+  updateSelectedNode({ archimate: { layer, element } });
+});
+els.propsElement.addEventListener('change', () => {
+  const node = model().nodes.find((n) => n.id === state.selectedNodeId);
+  const layer = node?.archimate?.layer || els.propsLayer.value;
+  updateSelectedNode({ archimate: { layer, element: els.propsElement.value } });
+});
+
+// Edge parameters
+els.propsEdgeColor.addEventListener('change', () => updateSelectedEdge({ color: els.propsEdgeColor.value || undefined }));
+els.propsLinestyle.addEventListener('change', () => updateSelectedEdge({ lineStyle: els.propsLinestyle.value === 'solid' ? undefined : els.propsLinestyle.value }));
+els.propsEdgedir.addEventListener('change', () => updateSelectedEdge({ direction: els.propsEdgedir.value === 'forward' ? undefined : els.propsEdgedir.value }));
 els.propsLink.addEventListener('click', () => {
   state.linkSourceId = state.selectedNodeId;
   setStatus(`Режим связи: кликните целевой узел (источник: ${state.linkSourceId})`, 'ok');

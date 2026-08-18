@@ -160,7 +160,11 @@ main {
 #props .title { font-size: 12px; color: var(--muted); }
 #props input, #props select { width: 100%; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 5px 8px; font: inherit; font-size: 12.5px; }
 #props .row { display: flex; gap: 6px; }
+#props [hidden] { display: none !important; } /* .row{display:flex} would beat UA [hidden] */
 #props .row button { flex: 1; }
+#props select { min-width: 0; flex: 1; }
+#props .pin-text { color: var(--muted); font-size: 11px; align-self: center; flex: 1; }
+#props-archimate:not([hidden]) { display: flex; flex-direction: column; gap: 8px; }
 
 #status {
   padding: 6px 14px;

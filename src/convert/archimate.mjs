@@ -2,10 +2,11 @@
 //
 // ArchiMate is carried on top of the architecture renderer: each ArchiMate
 // layer maps 1:1 to an archify component type purely as a CSS-class carrier,
-// and the `archimate` visual preset (src/editor/archimate-preset.mjs)
-// redefines those classes to the canonical ArchiMate palette. Element kinds
-// land in sublabel, the aspect (active/behavior/passive) in the node variant.
+// and the `archimate` visual preset (archimate-preset.mjs) redefines those
+// classes to the canonical ArchiMate palette. Element kinds land in sublabel
+// and drive the corner icon (archimate-icons.mjs, from the Archi tool, MIT).
 import { buildConnections } from './to-ir.mjs';
+import { archimateIconDataUrl } from './archimate-icons.mjs';
 
 // Canonical layer order top-to-bottom, mapped to the archify type that carries
 // its color in the archimate preset.
@@ -18,36 +19,40 @@ export const ARCHIMATE_LAYERS = {
   motivation: { order: 5, type: 'security', label: 'Мотивация' },
 };
 
-// ArchiMate element kinds (per layer) with their aspect and RU caption.
-const ELEMENT_ASPECT = {
-  // active structure
-  actor: 'active', role: 'active', collaboration: 'active', component: 'active',
-  node: 'active', device: 'active', stakeholder: 'active', resource: 'active',
-  // behavior
-  process: 'behavior', function: 'behavior', service: 'behavior', event: 'behavior',
-  interaction: 'behavior', capability: 'behavior', courseofaction: 'behavior',
-  valuestream: 'behavior',
-  // passive structure
-  object: 'passive', dataobject: 'passive', artifact: 'passive', contract: 'passive',
-  representation: 'passive', material: 'passive', outcome: 'passive', value: 'passive',
-  // motivation core
-  driver: 'behavior', assessment: 'behavior', goal: 'behavior', principle: 'behavior',
-  requirement: 'behavior', constraint: 'passive', meaning: 'passive',
+// Element kinds per layer with RU captions. Icon lookup:
+// archimateIconDataUrl(layer, element).
+export const LAYER_ELEMENTS = {
+  business: {
+    actor: 'Актор', role: 'Роль', collaboration: 'Коллаборация', interface: 'Интерфейс',
+    process: 'Процесс', function: 'Функция', interaction: 'Взаимодействие', event: 'Событие',
+    service: 'Сервис', object: 'Объект', contract: 'Контракт', representation: 'Представление',
+    product: 'Продукт',
+  },
+  application: {
+    component: 'Компонент', collaboration: 'Коллаборация', interface: 'Интерфейс',
+    function: 'Функция', interaction: 'Взаимодействие', process: 'Процесс', event: 'Событие',
+    service: 'Сервис', dataobject: 'Объект данных',
+  },
+  technology: {
+    node: 'Узел', device: 'Устройство', systemsoftware: 'Системное ПО',
+    collaboration: 'Коллаборация', interface: 'Интерфейс', path: 'Путь',
+    communicationnetwork: 'Сеть связи', function: 'Функция', process: 'Процесс',
+    interaction: 'Взаимодействие', event: 'Событие', service: 'Сервис', artifact: 'Артефакт',
+  },
+  motivation: {
+    stakeholder: 'Стейкхолдер', driver: 'Драйвер', assessment: 'Оценка', goal: 'Цель',
+    outcome: 'Результат', principle: 'Принцип', requirement: 'Требование',
+    constraint: 'Ограничение', value: 'Ценность', meaning: 'Смысл',
+  },
+  strategy: {
+    resource: 'Ресурс', capability: 'Способность', courseofaction: 'Курс действий',
+    valuestream: 'Поток ценности',
+  },
+  physical: {
+    equipment: 'Оборудование', facility: 'Площадка',
+    distributionnetwork: 'Сеть распределения', material: 'Материал',
+  },
 };
-
-const ELEMENT_RU = {
-  actor: 'Актор', role: 'Роль', collaboration: 'Коллаборация', component: 'Компонент',
-  node: 'Узел', device: 'Устройство', stakeholder: 'Стейкхолдер', resource: 'Ресурс',
-  process: 'Процесс', function: 'Функция', service: 'Сервис', event: 'Событие',
-  interaction: 'Взаимодействие', capability: 'Способность', courseofaction: 'Курс действий',
-  valuestream: 'Поток ценности', object: 'Объект', dataobject: 'Объект данных',
-  artifact: 'Артефакт', contract: 'Контракт', representation: 'Представление',
-  material: 'Материал', outcome: 'Результат', value: 'Ценность', driver: 'Драйвер',
-  assessment: 'Оценка', goal: 'Цель', principle: 'Принцип', requirement: 'Требование',
-  constraint: 'Ограничение', meaning: 'Смысл', element: 'Элемент',
-};
-
-const ASPECT_VARIANT = { active: 'default', behavior: 'emphasis', passive: 'dashed' };
 
 const NODE_W = 170;
 const NODE_H = 64;
@@ -60,8 +65,6 @@ const MARGIN_Y = 90;
 
 export function modelToArchimateIR(model, { title = 'ArchiMate diagram', animation } = {}) {
   const fallback = ARCHIMATE_LAYERS.application;
-  const annotated = model.nodes.filter((n) => n.archimate);
-  const plain = model.nodes.filter((n) => !n.archimate);
 
   // Group by layer in canonical order; nodes without [arch:...] go to the
   // application band so nothing disappears from the canvas.
@@ -69,7 +72,7 @@ export function modelToArchimateIR(model, { title = 'ArchiMate diagram', animati
   for (const node of model.nodes) {
     const layerKey = node.archimate ? node.archimate.layer : 'application';
     const layer = ARCHIMATE_LAYERS[layerKey] || fallback;
-    if (!bands.has(layer.order)) bands.set(layer.order, { layer, nodes: [] });
+    if (!bands.has(layer.order)) bands.set(layer.order, { layer, layerKey, nodes: [] });
     bands.get(layer.order).nodes.push(node);
   }
   const orderedBands = [...bands.entries()].sort((a, b) => a[0] - b[0]).map(([, band]) => band);
@@ -85,14 +88,13 @@ export function modelToArchimateIR(model, { title = 'ArchiMate diagram', animati
       const row = Math.floor(index / COLS_PER_LAYER);
       const autoPos = [MARGIN_X + col * GAP_COL, bandY + row * GAP_ROW];
       const pos = node.pin ? [node.pin.x, node.pin.y] : autoPos;
+      const layerKey = node.archimate?.layer || 'application';
       const kind = node.archimate?.element || 'element';
       components.push({
         id: node.id,
         type: band.layer.type,
         label: node.label,
-        // aspect (active/behavior/passive) rides in the caption; the
-        // architecture schema reserves `variant` for connections only.
-        sublabel: ELEMENT_RU[kind] || kind,
+        sublabel: LAYER_ELEMENTS[layerKey]?.[kind] || kind,
         pos,
         size: [NODE_W, NODE_H],
       });
@@ -106,8 +108,6 @@ export function modelToArchimateIR(model, { title = 'ArchiMate diagram', animati
     bandY += rows * GAP_ROW + BAND_GAP;
   }
 
-  // All 7 carrier types must be declared in the legend override map or the
-  // renderer prints default English labels for present kinds.
   const connections = buildConnections(model.edges, components);
 
   return {
@@ -122,6 +122,24 @@ export function modelToArchimateIR(model, { title = 'ArchiMate diagram', animati
     connections,
     boundaries,
   };
+}
+
+/** Absolute-positioned icon images appended before </svg>: ArchiMate puts the
+ * element icon in the node's top-right corner. Pure string surgery — no group
+ * parsing — so it works identically on the live DOM and on CLI output. */
+export function archimateIconImages(model, components) {
+  const byId = new Map(
+    model.nodes.filter((n) => n.archimate).map((n) => [n.id, n.archimate]),
+  );
+  return components
+    .map((c) => {
+      const a = byId.get(c.id);
+      const url = a && archimateIconDataUrl(a.layer, a.element);
+      if (!url) return '';
+      return `<image href="${url}" x="${c.pos[0] + c.size[0] - 18}" y="${c.pos[1] + 4}" width="14" height="14" data-icon-for="${c.id}"/>`;
+    })
+    .filter(Boolean)
+    .join('\n');
 }
 
 /** Marker for the editor/exporter: archimate models render with this preset. */

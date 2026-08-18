@@ -42,11 +42,59 @@
       <div id="props">
         <div class="title" id="props-title">Узел</div>
         <input id="props-label" placeholder="Подпись">
-        <div class="row">
-          <button id="props-link">Связь →</button>
+        <div class="row" id="props-node-fields">
+          <select id="props-shape" title="Форма узла">
+            <option value="rect">▭ Прямоугольник</option>
+            <option value="round">▢ Скруглённый</option>
+            <option value="stadium">⬭ Таблетка</option>
+            <option value="circle">◯ Круг</option>
+            <option value="diamond">◇ Ромб</option>
+          </select>
+          <select id="props-color" title="Цвет узла">
+            <option value="">— цвет —</option>
+            <option value="red">Красный</option>
+            <option value="green">Зелёный</option>
+            <option value="blue">Синий</option>
+            <option value="yellow">Жёлтый</option>
+            <option value="orange">Оранжевый</option>
+            <option value="purple">Фиолетовый</option>
+            <option value="cyan">Бирюзовый</option>
+            <option value="gray">Серый</option>
+          </select>
+        </div>
+        <div id="props-archimate" hidden>
+          <div class="row"><select id="props-layer" title="Слой ArchiMate"></select></div>
+          <div class="row"><select id="props-element" title="Элемент ArchiMate"></select></div>
+        </div>
+        <div class="row" id="props-edge-fields" hidden>
+          <select id="props-edge-color" title="Цвет связи">
+            <option value="">— цвет —</option>
+            <option value="red">Красный</option>
+            <option value="green">Зелёный</option>
+            <option value="blue">Синий</option>
+            <option value="yellow">Жёлтый</option>
+            <option value="orange">Оранжевый</option>
+            <option value="purple">Фиолетовый</option>
+            <option value="cyan">Бирюзовый</option>
+            <option value="gray">Серый</option>
+          </select>
+          <select id="props-linestyle" title="Стиль линии">
+            <option value="solid">─ Сплошная</option>
+            <option value="dashed">┄ Прерывистая</option>
+            <option value="dashdot">┄· Штрих-пунктир</option>
+          </select>
+          <select id="props-edgedir" title="Направление">
+            <option value="forward">→</option>
+            <option value="backward">←</option>
+            <option value="both">↔</option>
+          </select>
+        </div>
+        <div class="row" id="props-pin-row">
+          <span class="pin-text" id="props-pin-text"></span>
           <button id="props-unpin">Открепить</button>
         </div>
         <div class="row">
+          <button id="props-link">Связь →</button>
           <button id="props-delete">Удалить</button>
         </div>
       </div>

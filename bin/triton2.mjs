@@ -16,6 +16,8 @@ import {
   modelToArchitectureIR,
   modelToArchimateIR,
   isArchimateModel,
+  archimateIconImages,
+  styleOverridesForModel,
   applyTemplate,
   renderCards,
   DIAGRAM_TYPES,
@@ -66,6 +68,7 @@ function loadInput(file, title) {
   return {
     type: 'architecture',
     archimate,
+    model,
     ir: archimate
       ? modelToArchimateIR(model, { title: title || path.basename(file).replace(/\.(dsl|mmd)$/i, '') })
       : modelToArchitectureIR(model, { title: title || path.basename(file).replace(/\.(dsl|mmd)$/i, '') }),
@@ -101,7 +104,7 @@ async function main() {
     return; // the server keeps the process alive until Ctrl+C
   }
 
-  const { type, ir, archimate } = loadInput(input, args.title);
+  const { type, ir, archimate, model } = loadInput(input, args.title);
 
   if (command === 'validate') {
     const result = await validateDiagram(type, ir);
@@ -122,8 +125,13 @@ async function main() {
     const { svg, cards, meta } = await renderDiagram(type, ir);
     let finalSvg = svg;
     if (archimate) {
-      finalSvg = svg.replace('data-preset="classic"', 'data-preset="archimate"');
+      finalSvg = finalSvg.replace('data-preset="classic"', 'data-preset="archimate"');
+      finalSvg = finalSvg.replace('</svg>', `${archimateIconImages(model, ir.components)}\n</svg>`);
       template = template.replace('</style>', `${ARCHIMATE_CSS}\n</style>`);
+    }
+    if (model) {
+      const overrides = styleOverridesForModel(model);
+      if (overrides) finalSvg = finalSvg.replace('</svg>', `<style>${overrides}</style>\n</svg>`);
     }
     const html = applyTemplate(template, {
       title: meta.title,

@@ -1,6 +1,6 @@
 {
   "name": "triton2",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Diagram-as-code editor core: Triton DSL and archify IR rendered to deterministic SVG/standalone HTML in Node and in the browser.",
   "type": "module",
   "license": "MIT",

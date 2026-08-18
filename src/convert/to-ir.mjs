@@ -87,6 +87,28 @@ export function buildConnections(edges, components) {
   });
 }
 
+// Model styling that has no archify IR equivalent (per-node color, DSL shapes)
+// becomes a CSS override block embedded into the SVG. Shared by the editor
+// and the CLI renderer so canvas and exports match.
+const SHAPE_RX = { round: 14, stadium: 32, circle: 40 }; // rect keeps the default
+
+export function styleOverridesForModel(model) {
+  const rules = [];
+  for (const n of model.nodes) {
+    const parts = [];
+    if (n.color) parts.push(`fill: ${n.color}`);
+    const rx = SHAPE_RX[n.shape];
+    if (rx) parts.push(`rx: ${rx}px`);
+    if (parts.length) {
+      rules.push(`svg g[data-node-id="${n.id}"] [class^="c-"] { ${parts.join('; ')} }`);
+    }
+  }
+  for (const e of model.edges) {
+    if (e.color) rules.push(`svg [data-edge-id="${e.id}"] { stroke: ${e.color}; }`);
+  }
+  return rules.join('\n');
+}
+
 export function modelToArchitectureIR(model, { title = 'Triton 2 diagram', animation } = {}) {
   const depth = layerDepths(model);
   const perLayer = new Map();
