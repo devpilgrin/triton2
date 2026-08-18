@@ -1,0 +1,49 @@
+{
+  "name": "triton2",
+  "version": "0.1.0",
+  "description": "Diagram-as-code editor core: Triton DSL and archify IR rendered to deterministic SVG/standalone HTML in Node and in the browser.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Roman Kudryavsky (devpilgrin)",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/devpilgrin/triton2.git"
+  },
+  "bin": {
+    "triton2": "./bin/triton2.mjs"
+  },
+  "exports": {
+    ".": "./src/core/index.mjs",
+    "./convert": "./src/convert/index.mjs",
+    "./browser": "./dist/triton2-core.browser.mjs"
+  },
+  "files": [
+    "bin",
+    "src",
+    "vendor",
+    "dist",
+    "examples",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "node src/core/build.mjs",
+    "smoke": "node test/smoke.mjs",
+    "demo": "python3 -m http.server 8765 --bind 127.0.0.1",
+    "prepublishOnly": "npm run build && npm run smoke"
+  },
+  "keywords": [
+    "diagram",
+    "diagram-as-code",
+    "mermaid",
+    "architecture",
+    "svg",
+    "flowchart"
+  ],
+  "devDependencies": {
+    "esbuild": "^0.27.0"
+  }
+}

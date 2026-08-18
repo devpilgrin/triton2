@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="ru" data-theme="dark" data-preset="classic">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Triton 2 — spike: DSL → IR → archify SVG</title>
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font: 14px/1.5 "JetBrains Mono", ui-monospace, monospace;
+      background: #0b0e14; color: #d5dbe5; height: 100vh; display: flex; flex-direction: column;
+    }
+    header {
+      padding: 10px 16px; border-bottom: 1px solid #232a38; display: flex; gap: 12px; align-items: baseline;
+    }
+    header h1 { font-size: 15px; margin: 0; color: #7ee7fc; font-weight: 600; }
+    header span { color: #5b6472; font-size: 12px; }
+    main { flex: 1; display: grid; grid-template-columns: 400px 1fr; min-height: 0; }
+    #code {
+      border: 0; border-right: 1px solid #232a38; background: #0e131c; color: #d5dbe5;
+      padding: 14px; font: inherit; resize: none; outline: none;
+    }
+    #preview { overflow: auto; padding: 16px; display: flex; align-items: flex-start; justify-content: center; }
+    #preview svg { max-width: 100%; height: auto; max-height: calc(100vh - 130px); }
+    #status { padding: 6px 16px; font-size: 12px; color: #5b6472; border-top: 1px solid #232a38; }
+    #status.error { color: #ff7a90; white-space: pre-wrap; }
+    #status.ok { color: #7ee787; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Triton 2 — spike</h1>
+    <span>Triton DSL → archify IR → SVG. Рендер в браузере, без сервера.</span>
+  </header>
+  <main>
+    <textarea id="code" spellcheck="false">flowchart TD
+  A[Клиент] --> B{Запрос валиден?}
+  B -Да-> C[Обработка]
+  B -Нет-> D[Отказ]
+  C --> E([Ответ])
+  D --> B</textarea>
+    <div id="preview"></div>
+  </main>
+  <div id="status">…</div>
+
+  <script type="module">
+    import { parseFlowchart, modelToArchitectureIR, renderDiagram } from '../dist/triton2-core.browser.mjs';
+
+    // The archify SVG is styled by CSS custom classes that live in the
+    // standalone viewer template; borrow that stylesheet verbatim so the demo
+    // shows exactly what the delivered artifact would.
+    const templateText = await fetch('../vendor/archify/assets/template.html').then((r) => r.text());
+    const styleMatch = templateText.match(/<style>([\s\S]*?)<\/style>/);
+    if (styleMatch) {
+      const style = document.createElement('style');
+      style.textContent = styleMatch[1];
+      document.head.appendChild(style);
+    }
+
+    const code = document.getElementById('code');
+    const preview = document.getElementById('preview');
+    const status = document.getElementById('status');
+
+    let timer = 0;
+    async function render() {
+      const source = code.value;
+      try {
+        const model = parseFlowchart(source);
+        const ir = modelToArchitectureIR(model, { title: 'Triton 2 — spike demo' });
+        const { svg } = await renderDiagram('architecture', ir);
+        preview.innerHTML = svg;
+        status.className = 'ok';
+        status.textContent = `OK — ${model.nodes.length} узлов, ${model.edges.length} рёбер, SVG ${svg.length} байт`;
+      } catch (error) {
+        status.className = 'error';
+        status.textContent = error.message;
+      }
+    }
+
+    code.addEventListener('input', () => {
+      clearTimeout(timer);
+      timer = setTimeout(render, 350);
+    });
+    render();
+  </script>
+</body>
+</html>
