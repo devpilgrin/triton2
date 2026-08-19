@@ -14,9 +14,12 @@ import {
   renderDiagram,
   applyTemplate,
   renderCards,
-} from '../dist/triton2-core.browser.mjs';
+} from '../core/index.mjs';
 import { recordMotion } from './motion.mjs';
 import { ARCHIMATE_CSS } from './archimate-preset.mjs';
+import { EditorView, basicSetup } from 'codemirror';
+import { oneDark } from '@codemirror/theme-one-dark';
+import { autocompletion } from '@codemirror/autocomplete';
 
 const $ = (id) => document.getElementById(id);
 const els = {
@@ -129,7 +132,7 @@ function model() {
 // contract as triton-diagram-editor: any canvas mutation rewrites the text).
 function commitModel(next) {
   state.text = serializeFlowchart(next);
-  els.code.value = state.text;
+  setCode(state.text);
   els.direction.value = next.direction === 'LR' ? 'LR' : 'TB';
   render();
 }
@@ -141,6 +144,99 @@ function download(blob, filename) {
   a.click();
   window.__lastExport = { name: filename, size: blob.size, type: blob.type };
   setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+}
+
+// DSL completion source: context-aware suggestions for headers, node ids,
+// arrows, and bracket content (colors, pin, arch:layer.element).
+const DSL_COLORS = [
+  'red', 'green', 'blue', 'yellow', 'orange', 'purple', 'cyan', 'gray',
+  'красный', 'зелёный', 'зеленый', 'синий', 'жёлтый', 'желтый', 'оранжевый',
+  'фиолетовый', 'бирюзовый', 'серый',
+];
+
+function dslCompletions(context) {
+  const pos = context.pos;
+  const line = context.state.doc.lineAt(pos);
+  const before = line.text.slice(0, pos - line.from);
+
+  // Inside a bracket: [arch:layer.element], colors, pin, line styles.
+  const bracket = /\[([a-zA-Zа-яё0-9:._-]*)$/i.exec(before);
+  if (bracket) {
+    const options = [];
+    for (const [layer, elements] of Object.entries(LAYER_ELEMENTS)) {
+      const layerRu = ARCHIMATE_LAYERS[layer]?.label || layer;
+      for (const [element, ru] of Object.entries(elements)) {
+        options.push({ label: `arch:${layer}.${element}`, type: 'constant', detail: `${layerRu} · ${ru}` });
+      }
+    }
+    for (const color of DSL_COLORS) options.push({ label: color, type: 'keyword', detail: 'цвет' });
+    options.push({ label: 'pin=', type: 'property', detail: 'pin=x,y — закрепить позицию' });
+    options.push({ label: '--', type: 'keyword', detail: 'прерывистая линия' });
+    options.push({ label: '-.-', type: 'keyword', detail: 'штрих-пунктир' });
+    return { from: pos - bracket[1].length, options, validFor: /^[\wа-яё:.-]*$/i };
+  }
+
+  // Line start: diagram headers + known node ids.
+  if (/^\s*[\wа-яё]*$/i.test(before)) {
+    const word = /[\wа-яё]*$/i.exec(before)[0];
+    const options = [
+      { label: 'flowchart TD', type: 'keyword', detail: 'заголовок flowchart' },
+      { label: 'archimate TD', type: 'keyword', detail: 'заголовок ArchiMate' },
+      ...model().nodes.map((n) => ({ label: n.id, type: 'variable', detail: n.label })),
+    ];
+    return { from: pos - word.length, options, validFor: /^[\wа-яё]*$/i };
+  }
+
+  // After a node reference: arrows.
+  if (/([)\]}]|[\wа-яё]+)\s*$/i.test(before) && before.trim()) {
+    return {
+      from: pos,
+      options: [
+        { label: '-->', type: 'operator', detail: 'связь вперёд' },
+        { label: '<--', type: 'operator', detail: 'связь назад' },
+        { label: '<-->', type: 'operator', detail: 'в обе стороны' },
+        { label: '-текст->', type: 'operator', detail: 'связь с подписью' },
+        { label: '-->|текст|', type: 'operator', detail: 'подпись через пайп' },
+      ],
+    };
+  }
+  return null;
+}
+
+// CodeMirror wrapper around the former <textarea>: the same state.text
+// contract, plus history, highlighting and completion.
+let cmView = null;
+
+function codeText() {
+  return cmView ? cmView.state.doc.toString() : state.text;
+}
+
+function setCode(text) {
+  if (!cmView) { state.text = text; return; }
+  cmView.dispatch({ changes: { from: 0, to: cmView.state.doc.length, insert: text } });
+}
+
+let debounce = 0;
+
+function createCodeEditor() {
+  cmView = new EditorView({
+    doc: state.text,
+    extensions: [
+      basicSetup,
+      oneDark,
+      autocompletion({ override: [dslCompletions], activateOnTyping: true }),
+      EditorView.updateListener.of((update) => {
+        if (update.docChanged) {
+          state.text = update.state.doc.toString();
+          clearTimeout(debounce);
+          debounce = setTimeout(render, 350);
+        }
+      }),
+      EditorView.theme({ '&': { height: '100%' }, '.cm-scroller': { overflow: 'auto' } }),
+    ],
+    parent: els.code,
+  });
+  window.__cm = cmView; // test hook
 }
 
 function updateAnimButton() {
@@ -526,14 +622,7 @@ async function save() {
   }
 }
 
-// ---------- wiring ----------
-
-let debounce = 0;
-els.code.addEventListener('input', () => {
-  state.text = els.code.value;
-  clearTimeout(debounce);
-  debounce = setTimeout(render, 350);
-});
+// ---------- wiring (CodeMirror handles its own input events) ----------
 
 els.direction.addEventListener('change', () => {
   const m = model();
@@ -608,7 +697,7 @@ els.helpModal.addEventListener('click', (event) => {
 });
 $('help-example').addEventListener('click', () => {
   state.text = SAMPLE;
-  els.code.value = SAMPLE;
+  setCode(SAMPLE);
   els.helpModal.hidden = true;
   view.userZoomed = false;
   render();
@@ -698,7 +787,7 @@ html[data-ambient-motion="running"] svg[data-animation="trace"] [data-animate="n
   document.head.appendChild(archimateStyle);
 
   await detectServer();
-  els.code.value = state.text;
+  createCodeEditor();
   els.direction.value = model().direction === 'LR' ? 'LR' : 'TB';
   updateAnimButton();
   render();

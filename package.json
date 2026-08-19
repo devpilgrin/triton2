@@ -50,6 +50,8 @@
     "esbuild": "^0.28.2"
   },
   "dependencies": {
+    "@codemirror/theme-one-dark": "^6.1.3",
+    "codemirror": "^6.0.2",
     "upng-js": "^2.1.0"
   }
 }

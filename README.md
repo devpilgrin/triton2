@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="https://raw.githubusercontent.com/devpilgrin/triton2/main/img/logo.png" alt="Triton 2 — Diagram as Code Editor" width="800">
+</p>
+
 # Triton 2
 
 [![npm](https://img.shields.io/npm/v/triton2)](https://www.npmjs.com/package/triton2)
@@ -22,7 +26,8 @@ archify с двусторонней синхронизацией (drag узла 
 triton2 edit diagram.dsl   # локальный сервер на случайном порту + браузер
 ```
 
-- левая панель — DSL, правая — канвас (рендер archify в браузере, без сервера рендеринга);
+- левая панель — DSL (CodeMirror 6: автодополнение узлов/стрелок/`[arch:…]`/цветов,
+  подсветка, undo/redo), правая — канвас (рендер archify в браузере);
 - drag узла → `pin` в DSL; клик по узлу/связи → свойства (переименовать,
   связать, открепить, удалить);
 - «Сохранить» пишет файл через сервер; без сервера — скачивает .dsl;

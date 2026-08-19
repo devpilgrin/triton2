@@ -57,17 +57,21 @@ main {
 }
 
 #code {
-  border: 0;
   border-right: 1px solid var(--border);
   background: var(--panel);
-  color: var(--text);
-  padding: 14px;
-  font: inherit;
-  font-size: 13px;
-  resize: none;
-  outline: none;
-  white-space: pre;
-  overflow: auto;
+  min-height: 0;
+  overflow: hidden;
+}
+#code .cm-editor { height: 100%; font-size: 13px; }
+#code .cm-editor.cm-focused { outline: none; }
+#code .cm-tooltip-autocomplete {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+#code .cm-tooltip-autocomplete ul li[aria-selected] {
+  background: rgba(126, 231, 252, 0.15);
+  color: var(--accent);
 }
 
 #canvas-wrap {

@@ -47,4 +47,22 @@ await build({
   logLevel: 'info',
 });
 
-console.log('built dist/triton2-core.browser.mjs');
+// Editor bundle: CodeMirror + core, one self-contained ESM file.
+await build({
+  entryPoints: [path.join(root, 'src/editor/editor.js')],
+  bundle: true,
+  format: 'esm',
+  platform: 'browser',
+  target: 'es2022',
+  outfile: path.join(root, 'dist', 'editor.bundle.mjs'),
+  plugins: [browserAliasPlugin],
+  define: {
+    'process.env.ARCHIFY_QUALITY_PROFILE': 'undefined',
+    'process.env.ARCHIFY_DIAGNOSTIC_FORMAT': 'undefined',
+  },
+  minify: false,
+  sourcemap: false,
+  logLevel: 'info',
+});
+
+console.log('built dist/triton2-core.browser.mjs + dist/editor.bundle.mjs');

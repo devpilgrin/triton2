@@ -2,7 +2,7 @@
 // trace animation onto a 2D canvas, then WebM (MediaRecorder) or APNG (UPNG).
 // Ported from archify's viewer recordWebm (assets/template.html, MIT) and
 // extended with the APNG path discussed for Triton 2.
-import { UPNG } from '../../dist/triton2-core.browser.mjs';
+import { UPNG } from '../core/index.mjs';
 
 const MOTION_DURATION = 6000;
 
